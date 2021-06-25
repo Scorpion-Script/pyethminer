@@ -1,5 +1,4 @@
 # Ethminer JSON-RPC API Client Library
-# Version: 0.2.0
 # Author: Ziah Jyothi
 
 import socket
@@ -133,7 +132,7 @@ class EthminerApi:
         gpuTempFanSpeed = list(map(int, response["result"][6].split(";")))
         status2 = response["result"][8].split(";")
 
-        return {"version": response["result"][0], "runtime": int(response["result"][1]), "hashrate": int(status1[0]) / 1000, "sharesAccepted": int(status1[1]), "sharedRejected": int(status1[2]), "sharesFailed": int(status2[0]), "gpuHashrates": gpuHashrates, "gpuTempFanSpeed": gpuTempFanSpeed, "activePool": response["result"][7], "poolSwitches": int(status2[1])}
+        return {"version": response["result"][0], "runtime": int(response["result"][1]), "hashrate": int(status1[0]) / 1000, "sharesAccepted": int(status1[1]), "sharesRejected": int(status1[2]), "sharesFailed": int(status2[0]), "gpuHashrates": gpuHashrates, "gpuTempFanSpeed": gpuTempFanSpeed, "activePool": response["result"][7], "poolSwitches": int(status2[1])}
 
     def restart(self):
         response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_restart"})

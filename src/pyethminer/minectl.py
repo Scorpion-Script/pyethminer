@@ -65,6 +65,7 @@ Config file: {}
 
 Commands:
   confighelp - Print an example config
+  status[ml] [miner (default: all)] - Print miner status(es) (statusml is multiline)
   pause/resume [miner (default: all)] [gpu index (default: 0)] - Pauses or resumes mining on a GPU
   pools [miner (default: all)] - Lists pools
   pool [miner (default: all)] <pool index> - Sets the active pool""".format(configFile))
@@ -93,7 +94,35 @@ miners = [
 
     loadConfig(configFile)
 
-    if command == "pause" or command == "resume":
+    if command == "status" or command == "statusml":
+        multiLine = command == "statusml"
+
+        connectMiners(sys.argv[2] if len(sys.argv) >= 3 else "all")
+
+        minerStats = {}
+
+        for minerName in miners:
+            if not miners[minerName]["api"]:
+                continue
+
+            minerStats[minerName] = miners[minerName]["api"].getStats()
+
+        for minerName in minerStats:
+            stats = minerStats[minerName]
+
+            hours, minutes = divmod(stats["runtime"], 60)
+            shareStr = ":R{}".format(stats["sharesRejected"]) if stats["sharesRejected"] > 0 else ""
+            if stats["sharesFailed"] > 0:
+                shareStr += ":F{}".format(stats["sharesFailed"])
+
+            hashrateStr = "\n" if multiLine else ""
+            hashrateStr += "{:.2f} Mh/s".format(stats["hashrate"])
+
+            minerNameStr = "Miner {} - ".format(minerName) if len(minerStats) > 1 else ""
+
+            print("{}{:02d}:{:02d} A{}{} {}".format(minerNameStr, hours, minutes, stats["sharesAccepted"], shareStr, hashrateStr))
+
+    elif command == "pause" or command == "resume":
         pause = command != "resume"
 
         minerSelection = None
