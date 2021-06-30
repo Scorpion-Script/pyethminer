@@ -109,6 +109,7 @@ miners = [
 
         for minerName in minerStats:
             stats = minerStats[minerName]
+            #print(stats)
 
             hours, minutes = divmod(stats["runtime"], 60)
             shareStr = ":R{}".format(stats["sharesRejected"]) if stats["sharesRejected"] > 0 else ""
@@ -116,7 +117,15 @@ miners = [
                 shareStr += ":F{}".format(stats["sharesFailed"])
 
             hashrateStr = "\n" if multiLine else ""
-            hashrateStr += "{:.2f} Mh/s".format(stats["hashrate"])
+            if len(stats["gpuHashrates"]) == 1:
+                hashrateStr += "{:.2f} Mh/s".format(stats["hashrate"])
+            else:
+                curGpu = 0
+                for gpuHr in stats["gpuHashrates"]:
+                    if curGpu > 0:
+                        hashrateStr += ", "
+                    hashrateStr += "{:.2f} Mh/s".format(gpuHr)
+                    curGpu += 1
 
             minerNameStr = "Miner {} - ".format(minerName) if len(minerStats) > 1 else ""
 
