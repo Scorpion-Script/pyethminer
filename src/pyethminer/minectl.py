@@ -107,19 +107,28 @@ miners = [
 
             minerStats[minerName] = miners[minerName]["api"].getStats()
 
+        minerStatsLen = len(minerStats)
+        i = 0
+
         for minerName in minerStats:
             stats = minerStats[minerName]
             #print(stats)
 
             hours, minutes = divmod(stats["runtime"], 60)
-            shareStr = ":R{}".format(stats["sharesRejected"]) if stats["sharesRejected"] > 0 else ""
+            shareStr = "A{}".format(stats["sharesAccepted"])
+            if stats["sharesRejected"] > 0:
+                shareStr += ":R{}".format(stats["sharesRejected"])
             if stats["sharesFailed"] > 0:
                 shareStr += ":F{}".format(stats["sharesFailed"])
 
-            hashrateStr = "\n" if multiLine else ""
-            if len(stats["gpuHashrates"]) == 1:
-                hashrateStr += "{:.2f} Mh/s".format(stats["hashrate"])
-            else:
+            multiGpu = len(stats["gpuHashrates"]) > 1
+
+            hashrateStr = "\n" if multiLine and not multiGpu else " "
+
+            hashrateStr += "{:.2f} Mh/s".format(stats["hashrate"])
+
+            if multiGpu:
+                hashrateStr += "\n" if multiLine else " - "
                 curGpu = 0
                 for gpuHr in stats["gpuHashrates"]:
                     if curGpu > 0:
@@ -127,9 +136,13 @@ miners = [
                     hashrateStr += "{:.2f} Mh/s".format(gpuHr)
                     curGpu += 1
 
-            minerNameStr = "Miner {} - ".format(minerName) if len(minerStats) > 1 else ""
+            minerNameStr = "Miner {} - ".format(minerName) if minerStatsLen > 1 else ""
 
-            print("{}{:02d}:{:02d} A{}{} {}".format(minerNameStr, hours, minutes, stats["sharesAccepted"], shareStr, hashrateStr))
+            print("{}{:02d}:{:02d} {} {}".format(minerNameStr, hours, minutes, shareStr, hashrateStr))
+
+            i += 1
+            if multiLine and minerStatsLen > 1 and i < minerStatsLen:
+                print()
 
     elif command == "pause" or command == "resume":
         pause = command != "resume"
