@@ -30,14 +30,22 @@ def connectMiners(minerSelection):
 
     if minerSelection == "all":
         for miner in miners:
-            miners[miner]["api"] = EthminerApi()
-            miners[miner]["api"].connect(miners[miner]["host"], miners[miner]["port"])
+            try:
+                miners[miner]["api"] = EthminerApi()
+                miners[miner]["api"].connect(miners[miner]["host"], miners[miner]["port"])
+            except (OSError, RuntimeError) as e:
+                #print("Failed to connect to miner \"{}\": {}".format(miner, e))
+                miners[miner]["api"] = None
     else:
         if minerSelection not in miners:
             print("No such miner: {}".format(minerSelection))
             sys.exit(1)
-        miners[minerSelection]["api"] = EthminerApi()
-        miners[minerSelection]["api"].connect(miners[minerSelection]["host"], miners[minerSelection]["port"])
+        try:
+            miners[minerSelection]["api"] = EthminerApi()
+            miners[minerSelection]["api"].connect(miners[minerSelection]["host"], miners[minerSelection]["port"])
+        except (OSError, RuntimeError) as e:
+            #print("Failed to connect to miner \"{}\": {}".format(miner, e))
+            miners[minerSelection]["api"] = None
 
 def listPools(miner):
     pools = []
@@ -65,7 +73,8 @@ Config file: {}
 
 Commands:
   confighelp - Print an example config
-  status[ml] [miner (default: all)] - Print miner status(es) (statusml is multiline)
+  status [miner (default: all)] - Print miner status(es)
+  statistics [miner (default: all)] - Print miner statistics
   pause/resume [miner (default: all)] [gpu index (default: 0)] - Pauses or resumes mining on a GPU
   pools [miner (default: all)] - Lists pools
   pool [miner (default: all)] <pool index> - Sets the active pool""".format(configFile))
@@ -94,9 +103,7 @@ miners = [
 
     loadConfig(configFile)
 
-    if command == "status" or command == "statusml":
-        multiLine = command == "statusml"
-
+    if command == "status" or command == "statistics" or command == "stats":
         connectMiners(sys.argv[2] if len(sys.argv) >= 3 else "all")
 
         minerStats = {}
@@ -115,25 +122,29 @@ miners = [
             #print(stats)
 
             hours, minutes = divmod(stats["runtime"], 60)
+
             shareStr = "A{}".format(stats["sharesAccepted"])
             if stats["sharesRejected"] > 0:
-                shareStr += ":R{}".format(stats["sharesRejected"])
+                shareStr += " R{}".format(stats["sharesRejected"])
             if stats["sharesFailed"] > 0:
-                shareStr += ":F{}".format(stats["sharesFailed"])
+                shareStr += " F{}".format(stats["sharesFailed"])
 
             multiGpu = len(stats["gpuHashrates"]) > 1
 
-            hashrateStr = "\n" if multiLine and not multiGpu else " "
+            hashrateStr = ""
 
-            hashrateStr += "{:.2f} Mh/s".format(stats["hashrate"])
+            hashrateStr += " R{:.2f}%".format(stats["sharesRejected"] / stats["sharesAccepted"] * 100)
+            hashrateStr += " F{:.2f}% ".format(stats["sharesFailed"] / stats["sharesAccepted"] * 100)
+
+            hashrateStr += "\n{:.2f}Mh/s".format(stats["hashrate"])
 
             if multiGpu:
-                hashrateStr += "\n" if multiLine else " - "
+                hashrateStr += "  "
                 curGpu = 0
                 for gpuHr in stats["gpuHashrates"]:
                     if curGpu > 0:
-                        hashrateStr += ", "
-                    hashrateStr += "{:.2f} Mh/s".format(gpuHr)
+                        hashrateStr += " "
+                    hashrateStr += "{:.2f}Mh/s".format(gpuHr)
                     curGpu += 1
 
             minerNameStr = "Miner {} - ".format(minerName) if minerStatsLen > 1 else ""
@@ -141,7 +152,7 @@ miners = [
             print("{}{:02d}:{:02d} {} {}".format(minerNameStr, hours, minutes, shareStr, hashrateStr))
 
             i += 1
-            if multiLine and minerStatsLen > 1 and i < minerStatsLen:
+            if minerStatsLen > 1 and i < minerStatsLen:
                 print()
 
     elif command == "pause" or command == "resume":
