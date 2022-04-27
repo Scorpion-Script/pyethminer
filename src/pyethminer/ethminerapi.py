@@ -128,11 +128,51 @@ class EthminerApi:
         self.handleResponse(response, "Failed to get statistics", None)
 
         status1 = response["result"][2].split(";")
-        gpuHashrates = [int(i) / 1000 for i in list(map(int, response["result"][3].split(";")))]
-        gpuTempFanSpeed = list(map(int, response["result"][6].split(";")))
+        #gpuHashrates = [float(i) / 1000 for i in response["result"][3].split(";")]
+        #gpuTempFanSpeed = list(map(float, response["result"][6].split(";")))
         status2 = response["result"][8].split(";")
 
-        return {"version": response["result"][0], "runtime": int(response["result"][1]), "hashrate": int(status1[0]) / 1000, "sharesAccepted": int(status1[1]), "sharesRejected": int(status1[2]), "sharesFailed": int(status2[0]), "gpuHashrates": gpuHashrates, "gpuTempFanSpeed": gpuTempFanSpeed, "activePool": response["result"][7], "poolSwitches": int(status2[1])}
+        devices = []
+        gpuHashrateData = response["result"][3].split(";")
+        gpuTempFanData = response["result"][6].split(";")
+        for i in range(round(len(gpuTempFanData) / 2)):
+            devices.append({
+                #"name": dev["info"],
+                #"pci_bus_id": dev["pci_bus_id"],
+                #"accepted_shares": dev["accepted_shares"],
+                #"rejected_shares": dev["rejected_shares"],
+                #"invalid_shares": dev["invalid_shares"],
+                "hashrate": float(gpuHashrateData[i]) / 1000,
+                #"core_clock": dev["core_clock"],
+                #"memory_clock": dev["mem_clock"],
+                #"core_usage": dev["core_utilization"],
+                #"memory_usage": dev["mem_utilization"],
+                #"lhr_target": dev["lhr"],
+                "core_temp": int(gpuTempFanData[i * 2]),
+                #"mem_temp": dev["memTemperature"],
+                "fan": int(gpuTempFanData[i * 2 + 1]),
+                #"power": dev["power"]
+            })
+
+        return {
+            "version": response["result"][0],
+            "runtime": int(int(response["result"][1]) * 60),
+            "hashrate": float(status1[0]) / 1000,
+            "sharesAccepted": int(status1[1]),
+            "sharesRejected": int(status1[2]),
+            "sharesFailed": int(status2[0]),
+            "devices": devices,
+            #"gpuTempFanSpeed": gpuTempFanSpeed,
+            "activePool": response["result"][7],
+            "poolSwitches": int(status2[1])
+        }
+
+    def getDetailedStats(self):
+        response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_getstatdetail"})
+
+        self.handleResponse(response, "Failed to get detailed statistics", None)
+
+        return response["result"]
 
     def restart(self):
         response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_restart"})
@@ -171,11 +211,34 @@ class EthminerApi:
         self.handleResponse(response, "Failed to set active pool")
 
     def pauseGpu(self, index, pause = True):
-        response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_pausegpu", "params": { "index": index, "pause": pause }})
+        indices = []
+        if index == -1:
+            stats = self.getStats()
+            for idx in range(0, len(stats["gpuHashrates"])):
+                indices.append(idx)
+        else:
+            indices.append(index)
 
-        self.handleResponse(response, "Failed to pause GPU")
+        for idx in indices:
+            response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_pausegpu", "params": { "index": idx, "pause": pause }})
+
+            self.handleResponse(response, "Failed to pause GPU {}".format(idx))
 
     def setVerbosity(self, verbosity):
         response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_setverbosity", "params": { "verbosity": verbosity }})
 
         self.handleResponse(response, "Failed to set verbosity")
+
+    def setLhrTune(self, index, tune):
+        indices = []
+        if index == -1:
+            stats = self.getStats()
+            for idx in range(0, len(stats["gpuHashrates"])):
+                indices.append(idx)
+        else:
+            indices.append(index)
+
+        for idx in indices:
+            response = self.sendRequest({"jsonrpc": EthminerApi.jsonApiVersion, "method": "miner_setlhrtune", "params": { "index": idx, "tune": tune}})
+
+            self.handleResponse(response, "Failed to set LHR tune for GPU {}".format(idx))

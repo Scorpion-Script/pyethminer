@@ -1,1 +1,2 @@
 from pyethminer.ethminerapi import EthminerApi
+from pyethminer.nbminerapi import NBMinerApi
