@@ -147,13 +147,18 @@ miners = [
         minerStats = {}
 
         for minerName in miners:
-            if not miners[minerName]["api"]:
-                if miners[minerName]["connectionError"]:
+            miner = miners[minerName]
+            if not miner["api"]:
+                if miner["connectionError"]:
                     minerStats[minerName] = None
 
                 continue
 
-            minerStats[minerName] = miners[minerName]["api"].getStats()
+            try:
+                minerStats[minerName] = miner["api"].getStats()
+            except (OSError, RuntimeError) as e:
+                #print("Failed to connect to miner {}: {}".format(minerName, e))
+                minerStats[minerName] = None
 
         minerStatsLen = len(minerStats)
         i = 0
@@ -221,10 +226,11 @@ miners = [
         connectMiners(minerSelection)
 
         for minerName in miners:
-            if not miners[minerName]["api"] or miner["api_type"] != "ethminer":
+            miner = miners[minerName]
+            if not miner["api"] or miner["api_type"] != "ethminer":
                 continue
 
-            miners[minerName]["api"].pauseGpu(gpuIndex, pause)
+            miner["api"].pauseGpu(gpuIndex, pause)
             if gpuIndex == -1:
                 print("{} all GPUs on miner {}".format("Paused" if pause else "Resumed", minerName))
             else:
@@ -235,10 +241,11 @@ miners = [
         connectMiners(sys.argv[2] if len(sys.argv) >= 3 else "all")
 
         for minerName in miners:
-            if not miners[minerName]["api"] or miner["api_type"] != "ethminer":
+            miner = miners[minerName]
+            if not miner["api"] or miner["api_type"] != "ethminer":
                 continue
 
-            pools, activePool = listPools(miners[minerName])
+            pools, activePool = listPools(miner)
             if pools is None:
                 print("Failed to get pools")
                 sys.exit(1)
@@ -263,15 +270,16 @@ miners = [
         connectMiners(selectedMiner)
 
         for minerName in miners:
-            if not miners[minerName]["api"] or miner["api_type"] != "ethminer":
+            miner = miners[minerName]
+            if not miner["api"] or miner["api_type"] != "ethminer":
                 continue
 
-            pools, activePool = listPools(miners[minerName])
+            pools, activePool = listPools(miner)
             if selectedPool > (len(pools) - 1):
                 print("Pool index {} out of range 0-{} for miner {}, skipping".format(selectedPool, len(pools) - 1, minerName))
                 continue
 
-            miners[minerName]["api"].setActivePool(selectedPool)
+            miner["api"].setActivePool(selectedPool)
             print("Selected pool {} on miner {}".format(pools[selectedPool], minerName))
 
     elif command == "lhr":
@@ -294,10 +302,11 @@ miners = [
         connectMiners(minerSelection)
 
         for minerName in miners:
-            if not miners[minerName]["api"] or miner["api_type"] != "ethminer":
+            miner = miners[minerName]
+            if not miner["api"] or miner["api_type"] != "ethminer":
                 continue
 
-            miners[minerName]["api"].setLhrTune(gpuIndex, tune)
+            miner["api"].setLhrTune(gpuIndex, tune)
             if gpuIndex == -1:
                 print("LHR tune set to {} for all GPUs on miner {}".format(tune, minerName))
             else:

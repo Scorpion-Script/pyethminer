@@ -29,7 +29,7 @@ class NBMinerApi:
 
     def getStats(self):
         request = urllib.request.Request("{}{}/status".format(self.url, NBMinerApi.API_V1_PATH))
-        resp = urllib.request.urlopen(request)
+        resp = urllib.request.urlopen(request, timeout=1)
         response = json.loads(resp.read().decode(resp.info().get_param('charset') or 'utf-8'))
 
         #gpuHashrates = [float(i["hashrate_raw"]) / 1000000 for i in response["miner"]["devices"]]
